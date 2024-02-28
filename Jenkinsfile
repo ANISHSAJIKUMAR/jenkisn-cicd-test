@@ -3,14 +3,18 @@ pipeline {
 
     environment {
         AWS_DEFAULT_REGION = "us-east-1"
-        // Reference the ID of the AWS credentials stored in Jenkins
-        AWS_CREDENTIALS_ID = 'aws-credentials-id'
+        AWS_CREDENTIALS_ID = 'aws-credentials-id' 
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git url: ''
+                // Correctly checks out the 'main' branch
+                checkout([
+                    $class: 'GitSCM', 
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[url: 'https://github.com/ANISHSAJIKUMAR/jenkisn-cicd-test.git']]
+                ])
             }
         }
 
@@ -38,17 +42,17 @@ pipeline {
         stage ('Build and Publish to ECR') {
             steps {
                 script {
-                    // Use withAWS plugin to setup AWS credentials for the block
                     withAWS(credentials: "${env.AWS_CREDENTIALS_ID}", region: "${env.AWS_DEFAULT_REGION}") {
-                        sh '''
-                        $(aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 590183924079.dkr.ecr.us-east-1.amazonaws.com)
+                        // Login to ECR
+                        sh "aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin 590183924079.dkr.ecr.us-east-1.amazonaws.com"
                         
-                        docker tag lightfeather-backend:$BUILD_NUMBER public.ecr.aws/h8n2j7c4/lightfeather-backend:$BUILD_NUMBER
-                        docker push public.ecr.aws/h8n2j7c4/lightfeather-backend:$BUILD_NUMBER
+                        // Tagging Docker images for ECR
+                        sh "docker tag lightfeather-backend:$BUILD_NUMBER 590183924079.dkr.ecr.us-east-1.amazonaws.com/lightfeather-backend:$BUILD_NUMBER"
+                        sh "docker tag lightfeather-frontend:$BUILD_NUMBER 590183924079.dkr.ecr.us-east-1.amazonaws.com/lightfeather-frontend:$BUILD_NUMBER"
                         
-                        docker tag lightfeather-frontend:$BUILD_NUMBER public.ecr.aws/h8n2j7c4/lightfeather-frontend:$BUILD_NUMBER
-                        docker push public.ecr.aws/h8n2j7c4/lightfeather-frontend:$BUILD_NUMBER
-                        '''
+                        // Pushing Docker images to ECR
+                        sh "docker push 590183924079.dkr.ecr.us-east-1.amazonaws.com/lightfeather-backend:$BUILD_NUMBER"
+                        sh "docker push 590183924079.dkr.ecr.us-east-1.amazonaws.com/lightfeather-frontend:$BUILD_NUMBER"
                     }
                 }
             }
