@@ -1,0 +1,12 @@
+node_modules/
+**/.terraform/*
+*.tfstate
+*.tfstate.*.backup
+*.tfstate.backup
+*.tfvars
+*.tfvars.json
+*.tfplan
+.terraformrc
+terraform.rc
+# Ignore Terraform temporary directories
+/Users/anishskumar/Downloads/devops-code-challenge-11-master/terraform/.terraform/*
