@@ -3,14 +3,14 @@ pipeline {
 
     environment {
         AWS_DEFAULT_REGION = "us-east-1"
-        AWS_CREDENTIALS_ID = 'aws-credentials-id' 
+        AWS_CREDENTIALS_ID = 'aws-credentials-id' // Ensure this matches the actual ID of your AWS credentials in Jenkins
+        ECR_REPOSITORY = "590183924079.dkr.ecr.us-east-1.amazonaws.com/devops-code-challenge"
         PATH = "/opt/homebrew/bin:${env.PATH}"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Correctly checks out the 'main' branch
                 checkout([
                     $class: 'GitSCM', 
                     branches: [[name: '*/main']],
@@ -22,38 +22,32 @@ pipeline {
         stage("Build Frontend") {
             steps {
                 sh "cd frontend && npm ci && npm install && npm run build"
-                sh "cd .."
             }
         }
 
         stage("Build Backend") {
             steps {
                 sh "cd backend && npm ci && npm install"
-                sh "cd .."
             }
         }
 
         stage("Build Docker Images") {
             steps {
-                sh "docker build -t lightfeather-frontend:$BUILD_NUMBER -f frontend/Dockerfile ./frontend"
-                sh "docker build -t lightfeather-backend:$BUILD_NUMBER -f backend/Dockerfile ./backend"
+                sh "/usr/local/bin/docker build -t ${ECR_REPOSITORY}:frontend-${BUILD_NUMBER} -f frontend/Dockerfile ./frontend"
+                sh "/usr/local/bin/docker build -t ${ECR_REPOSITORY}:backend-${BUILD_NUMBER} -f backend/Dockerfile ./backend"
             }
         }
 
         stage ('Build and Publish to ECR') {
             steps {
                 script {
-                    withAWS(credentials: "${env.AWS_CREDENTIALS_ID}", region: "${env.AWS_DEFAULT_REGION}") {
+                    withAWS(credentials: "${AWS_CREDENTIALS_ID}", region: "${AWS_DEFAULT_REGION}") {
                         // Login to ECR
-                        sh "aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin 590183924079.dkr.ecr.us-east-1.amazonaws.com"
-                        
-                        // Tagging Docker images for ECR
-                        sh "docker tag lightfeather-backend:$BUILD_NUMBER 590183924079.dkr.ecr.us-east-1.amazonaws.com/lightfeather-backend:$BUILD_NUMBER"
-                        sh "docker tag lightfeather-frontend:$BUILD_NUMBER 590183924079.dkr.ecr.us-east-1.amazonaws.com/lightfeather-frontend:$BUILD_NUMBER"
+                        sh "aws ecr get-login-password | /usr/local/bin/docker login --username AWS --password-stdin ${ECR_REPOSITORY}"
                         
                         // Pushing Docker images to ECR
-                        sh "docker push 590183924079.dkr.ecr.us-east-1.amazonaws.com/lightfeather-backend:$BUILD_NUMBER"
-                        sh "docker push 590183924079.dkr.ecr.us-east-1.amazonaws.com/lightfeather-frontend:$BUILD_NUMBER"
+                        sh "/usr/local/bin/docker push ${ECR_REPOSITORY}:frontend-${BUILD_NUMBER}"
+                        sh "/usr/local/bin/docker push ${ECR_REPOSITORY}:backend-${BUILD_NUMBER}"
                     }
                 }
             }
