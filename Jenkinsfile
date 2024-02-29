@@ -4,6 +4,7 @@ pipeline {
     environment {
         AWS_DEFAULT_REGION = "us-east-1"
         AWS_CREDENTIALS_ID = 'aws-credentials-id' 
+        PATH = "/opt/homebrew/bin:${env.PATH}"
     }
 
     stages {
